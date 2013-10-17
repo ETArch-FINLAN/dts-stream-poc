@@ -2,14 +2,15 @@ package br.ufu.facom.network.poc.stream;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
 import javax.swing.Timer;
 
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
+
 import br.ufu.facom.network.dlontology.EntitySocket;
-import br.ufu.facom.network.dlontology.FinSocket;
 import br.ufu.facom.network.dlontology.WorkspaceSocket;
 import br.ufu.facom.network.dlontology.exception.DTSException;
 import br.ufu.facom.network.poc.stream.mjpeg.MjpegFrame;
@@ -30,12 +31,11 @@ public class Server {
 	private MjpegInputStream videoStream; // VideoStream object used to access video frames
 
 	private Timer timer; // timer used to send the images at the video frame rate
-	private byte[] buf; // buffer used to store the images to send to the client
 
-	private EntitySocket entity;
+	private static EntitySocket entity;
 	private WorkspaceSocket workspace;
 	private String titleStream;
-
+	
 	/**
 	 * Construtor
 	 * @throws Exception 
@@ -74,9 +74,6 @@ public class Server {
 			
 		}
 		
-		
-		buf = new byte[15000];
-
 		try {
 			videoStream = new MjpegInputStream(new FileInputStream(movie));
 		} catch (Exception e) {
@@ -94,13 +91,14 @@ public class Server {
 		}
 	}
 	
-	public void finalize(){//TODO analisar código
-		/*if(finSocket != null){
-			finSocket.disjoinWorkspace(titleStream);
-			finSocket.deleteWorkspace(titleStream);
-			finSocket.unregister();
-			finSocket.close();
-		}*/
+	public static void endEntity(){
+		try {
+			entity.unregister();
+			System.out.println("Entity unregistered.");
+		} catch (Exception e) {
+			System.out.println("Failed to unregister entity.");
+			e.printStackTrace();
+		}
 	}
 
 	class TimerListener implements ActionListener {
@@ -142,8 +140,23 @@ public class Server {
 	
 	public static void main(String[] args) throws Exception {
 		if(args.length == 4){
+			
+			//Capturando sinal de saida
+			Signal.handle(new Signal("INT"), new SignalHandler () {
+				public void handle(Signal sig) {
+					try {
+						endEntity();
+						System.exit(0);
+					} catch (Throwable e) {
+						System.out.println("erro");
+						e.printStackTrace();
+					}
+				}
+			});
+			
 			new Server(args[0], args[1], args[2], args[3]);
-		}else
-			System.err.println("Wrong usage...");
+		} else {
+			System.err.println("Usage:\n<interface> <titleServer> <titleStream> <movie>");
+		}
 	}
 }

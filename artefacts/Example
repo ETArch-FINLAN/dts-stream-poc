@@ -1,0 +1,8 @@
+Client
+java -Djava.library.path="/home/lucas/desenvolvimento/workspace/dts-socket/jni" -jar Client.jar h1-eth1 nomeCLiente nomeFilme
+
+Server
+java -Djava.library.path="/home/lucas/desenvolvimento/workspace/dts-socket/jni" -jar Server.jar h2-eth1 nomeServidor nomeFilme "/home/lucas/Downloads/another5.mjpeg"
+
+
+-Djava.library.path = path of FinSocket 

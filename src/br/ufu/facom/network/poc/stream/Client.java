@@ -14,24 +14,25 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 import br.ufu.facom.network.dlontology.EntitySocket;
 import br.ufu.facom.network.dlontology.WorkspaceSocket;
 import br.ufu.facom.network.dlontology.exception.DTSException;
 
 public class Client {
-	//Timer timer; // timer used to receive data
-	byte[] buf; // buffer used to store data received
 
 	BufferedReader bufferedReader;
 	BufferedWriter bufferedWriter;
 
 	static int MJPEG_TYPE = 26; // RTP payload type for MJPEG video
 	
-	private EntitySocket entity;
-	private WorkspaceSocket workspace;
+	private static EntitySocket entity;
+	private static WorkspaceSocket workspace;
 	private String titleStream;
 	
 	private Thread streamThread;
+	
 	/**
 	 * GUI
 	 */
@@ -39,14 +40,10 @@ public class Client {
 	 JPanel mainPanel = new JPanel();
 	 JLabel iconLabel = new JLabel();
 	 ImageIcon icon;
-	
+	 
 	public Client(String interf, String titleClient, String titleStream, boolean viewEnabled) throws Exception {
 		this.titleStream = titleStream;
 
-		// allocate enough memory for the buffer used to receive data from the server
-		buf = new byte[15000];
-		
-		
 		entity = new EntitySocket(interf, titleClient);
 		if(!entity.open()) {
 			throw new Exception("Finsocket open fail");
@@ -89,7 +86,7 @@ public class Client {
 				// receive the DP from the socket:
 				byte buf[] = workspace.recieve();
 				int size = buf.length;
-	
+				
 				// create an RTPpacket object from the DP
 				RTPPacket rtp_packet = new RTPPacket(buf, size);
 	
@@ -99,13 +96,17 @@ public class Client {
 				rtp_packet.getPayload(payload);
 	
 				if(viewEnabled){
+					
 					// get an Image object from the payload bitstream
 					Toolkit toolkit = Toolkit.getDefaultToolkit();
 					Image image = toolkit.createImage(payload, 0, payload_length);
 		
 					// display the image as an ImageIcon object
 					icon = new ImageIcon(image);
-					iconLabel.setIcon(icon);
+					
+					if(icon.getIconWidth() > 0){//Estava chegando imagens com tamanho menor que 0
+						iconLabel.setIcon(icon);
+					}
 				}
 			}catch (Exception ex) {
 				ex.printStackTrace();
@@ -132,24 +133,45 @@ public class Client {
 	    f.setVisible(true);
 	    f.addWindowListener(new WindowAdapter() {
 	        public void windowClosing(WindowEvent e) {
-	        	endSocket();
+	        	try {
+					finalize();
+				} catch (Throwable e1) {
+					e1.printStackTrace();
+				}
 	            System.exit(0);
 	     }});
 	    
 	}
-
-	private void endSocket() {//TODO analisar código
-		/*if(finSocket != null){
-			//finSocket.disjoinWorkspace(titleStream);
-			//finSocket.unregister();
-			finSocket.close();
-		}*/
-	}
 	
+	public static void endEntity(){
+		try {
+			entity.unregister();
+			System.out.println("Entity unregistered.");
+		} catch (Exception e) {
+			System.out.println("Failed to unregister entity.");
+			e.printStackTrace();
+		}
+	}
+
 	public static void main(String[] args) throws Exception {
-		if(args.length == 4){
-			new Client(args[0], args[1] , args[2], Boolean.getBoolean(args[3].toLowerCase()));
+		if(args.length == 3){
+			
+			//Capturando sinal de saida
+			Signal.handle(new Signal("INT"), new SignalHandler () {
+				public void handle(Signal sig) {
+					try {
+						endEntity();
+						System.exit(0);
+					} catch (Throwable e) {
+						System.out.println("erro");
+						e.printStackTrace();
+					}
+				}
+			});
+
+			new Client(args[0], args[1] , args[2], true);
+			
 		}else
-			System.err.println("Wrong usage");
+			System.err.println("Usage:\n<interface> <titleClient> <titleStream>");
 	}
 }
