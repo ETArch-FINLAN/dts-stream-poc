@@ -33,7 +33,7 @@ public class Server {
 	private Timer timer; // timer used to send the images at the video frame rate
 
 	private static EntitySocket entity;
-	private WorkspaceSocket workspace;
+	private static WorkspaceSocket workspace;
 	private String titleStream;
 	
 	/**
@@ -98,10 +98,10 @@ public class Server {
 	
 	public static void endEntity(){
 		try {
-			entity.unregister();
-			System.out.println("Entity unregistered.");
+			workspace.detach();
+			System.out.println("Detached.");
 		} catch (Exception e) {
-			System.out.println("Failed to unregister entity.");
+			System.out.println("Failed to detach entity.");
 			e.printStackTrace();
 		}
 	}

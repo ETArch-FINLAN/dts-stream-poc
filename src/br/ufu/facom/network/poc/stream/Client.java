@@ -150,10 +150,10 @@ public class Client {
 	
 	public static void endEntity(){
 		try {
-			entity.unregister();
-			System.out.println("Entity unregistered.");
+			workspace.detach();
+			System.out.println("Detached.");
 		} catch (Exception e) {
-			System.out.println("Failed to unregister entity.");
+			System.out.println("Failed to detach entity.");
 			e.printStackTrace();
 		}
 	}
