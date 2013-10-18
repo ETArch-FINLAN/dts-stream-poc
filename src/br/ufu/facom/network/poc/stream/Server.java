@@ -53,7 +53,12 @@ public class Server {
 			throw new Exception("Finsocket open fail");
 		} 
 		
-		entity.register();
+		try{
+			entity.register();
+		} catch(Exception e) {
+			e.printStackTrace();
+			System.out.println("Entidade provavelmenta já registrada.");
+		}
 		
 		workspace = new WorkspaceSocket(interf, titleStream);
 		if(!workspace.open()) {
