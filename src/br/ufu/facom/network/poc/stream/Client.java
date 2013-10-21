@@ -29,6 +29,7 @@ public class Client {
 	
 	private static EntitySocket entity;
 	private static WorkspaceSocket workspace;
+	private WorkspaceSocket secondSocket;
 	private String titleStream;
 	
 	private Thread streamThread;
@@ -41,14 +42,22 @@ public class Client {
 	 JLabel iconLabel = new JLabel();
 	 ImageIcon icon;
 	 
-	public Client(String interf, String titleClient, String titleStream, boolean viewEnabled) throws Exception {
+	public Client(String interf, String titleClient, String titleStream, String secondInterf) throws Exception {
 		this.titleStream = titleStream;
 
 		entity = new EntitySocket(interf, titleClient);
-		if(!entity.open()) {
+		workspace = new WorkspaceSocket(interf, titleStream);
+		if(!entity.open() || !workspace.open()) {
 			throw new Exception("Finsocket open fail");
 		} 
 		
+		if(secondInterf != null) {
+			secondSocket = new WorkspaceSocket(secondInterf, titleStream);
+			if(secondSocket.open()) {
+				throw new Exception("Finsocket open fail");
+			}
+		}
+			
 		try{
 			entity.register();
 		} catch(Exception e) {
@@ -56,11 +65,6 @@ public class Client {
 			System.out.println("Entidade provavelmenta já registrada.");
 		}
 		
-		workspace = new WorkspaceSocket(interf, titleStream);
-		if(!workspace.open()) {
-			throw new Exception("Finsocket open fail");
-		}
-
 		try {
 			
 			workspace.attach(entity);
@@ -75,21 +79,23 @@ public class Client {
 			
 		}
 		
-		if(viewEnabled) {
-			createView();
-		}
+		createView();
 	
-		startThread(viewEnabled);
+		startThread(workspace);
+		
+		if(secondInterf != null) {
+			startThread(secondSocket);
+		}
 	}
 
-	private void startThread(final boolean viewEnabled) {
+	private void startThread(final WorkspaceSocket workspaceSocket) {
 		streamThread = new Thread(){
 	    	@Override
 	    	public void run() {
 	    	while(!streamThread.isInterrupted()){
 			try {
 				// receive the DP from the socket:
-				byte buf[] = workspace.recieve();
+				byte buf[] = workspaceSocket.recieve();
 				int size = buf.length;
 				
 				// create an RTPpacket object from the DP
@@ -100,18 +106,16 @@ public class Client {
 				byte[] payload = new byte[payload_length];
 				rtp_packet.getPayload(payload);
 	
-				if(viewEnabled){
 					
-					// get an Image object from the payload bitstream
-					Toolkit toolkit = Toolkit.getDefaultToolkit();
-					Image image = toolkit.createImage(payload, 0, payload_length);
-		
-					// display the image as an ImageIcon object
-					icon = new ImageIcon(image);
-					
-					if(icon.getIconWidth() > 0){//Estava chegando imagens com tamanho menor que 0
-						iconLabel.setIcon(icon);
-					}
+				// get an Image object from the payload bitstream
+				Toolkit toolkit = Toolkit.getDefaultToolkit();
+				Image image = toolkit.createImage(payload, 0, payload_length);
+	
+				// display the image as an ImageIcon object
+				icon = new ImageIcon(image);
+				
+				if(icon.getIconWidth() > 0){//Estava chegando imagens com tamanho menor que 0
+					iconLabel.setIcon(icon);
 				}
 			}catch (Exception ex) {
 				ex.printStackTrace();
@@ -159,24 +163,25 @@ public class Client {
 	}
 
 	public static void main(String[] args) throws Exception {
-		if(args.length == 3){
-			
-			//Capturando sinal de saida
-			Signal.handle(new Signal("INT"), new SignalHandler () {
-				public void handle(Signal sig) {
-					try {
-						endEntity();
-						System.exit(0);
-					} catch (Throwable e) {
-						System.out.println("erro");
-						e.printStackTrace();
-					}
+		//Capturando sinal de saida
+		Signal.handle(new Signal("INT"), new SignalHandler () {
+			public void handle(Signal sig) {
+				try {
+					endEntity();
+					System.exit(0);
+				} catch (Throwable e) {
+					System.out.println("erro");
+					e.printStackTrace();
 				}
-			});
+			}
+		});
 
-			new Client(args[0], args[1] , args[2], true);
-			
-		}else
-			System.err.println("Usage:\n<interface> <titleClient> <titleStream>");
+		if(args.length == 4){
+			new Client(args[0], args[1], args[2], args[3]);
+		} else if (args.length == 3) {
+			new Client(args[0], args[1], args[2], null);			
+		} else {
+			System.err.println("Usage:\n<interface> <titleClient> <titleStream> [second interface]");
+		}
 	}
 }
